@@ -126,6 +126,7 @@
                 <configuration>
                     <testNGArtifactName>none:none</testNGArtifactName>
                     <argLine>-XX:+StartAttachListener</argLine>
+                    <argLine>-XX:MaxPermSize=128m</argLine>
                 </configuration>
                 <executions>
                     <execution>
