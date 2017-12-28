@@ -125,7 +125,7 @@
                 <version>${surefire-version}</version>
                 <configuration>
                     <testNGArtifactName>none:none</testNGArtifactName>
-                    <argLine>-XX:+StartAttachListener -XX:+CMSClassUnloadingEnabled -XX:+CMSPermGenSweepingEnabled</argLine>
+                    <argLine>-XX:MaxPermSize=512m -XX:+StartAttachListener -XX:+CMSClassUnloadingEnabled -XX:+CMSPermGenSweepingEnabled</argLine>
                 </configuration>
                 <executions>
                     <execution>
