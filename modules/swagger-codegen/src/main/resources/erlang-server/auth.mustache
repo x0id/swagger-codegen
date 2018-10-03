@@ -1,54 +1,56 @@
 -module({{packageName}}_auth).
 
--export([authorize_api_key/5]).
+-export([is_authorized/3]).
+-export([is_forbidden/4]).
 
--spec authorize_api_key(
+-spec is_authorized(
     LogicHandler :: atom(),
     OperationID :: {{packageName}}_api:operation_id(),
-    From :: header | qs_val,
-    KeyParam :: iodata() | atom(),
     Req ::cowboy_req:req()
 )-> {true, Context :: #{binary() => any()}, Req ::cowboy_req:req()} |
     {false, AuthHeader :: binary(), Req ::cowboy_req:req()}.
 
-authorize_api_key(LogicHandler, OperationID, From, KeyParam, Req0) ->
-    {ApiKey, Req} = get_api_key(From, KeyParam, Req0),
-    case ApiKey of
-        undefined ->
-            AuthHeader = <<"">>,
-            {false, AuthHeader, Req};
-        _ ->
-            Result = {{packageName}}_logic_handler:authorize_api_key(
-                LogicHandler,
-                OperationID,
-                ApiKey
-            ),
-            case Result of
-              {{#authMethods}}
-                {{#isApiKey}}
-                {true, Context}  ->
-                    {true, Context, Req};
-                {{/isApiKey}}
-              {{/authMethods}}
-                false ->
-                    AuthHeader = <<"">>,
-                    {false, AuthHeader, Req}
-            end
+is_authorized(LogicHandler, OperationID, Req0) ->
+    {ApiKey, Req} = get_api_key(header, "Authorization", Req0),
+    case {{packageName}}_logic_handler:is_authorized(
+        LogicHandler,
+        OperationID,
+        ApiKey
+    ) of
+    {true, Context} ->
+        {true, Context, Req};
+    {false, Error} ->
+        {false, error_header(Error), Req}
+    end.
+
+is_forbidden(LogicHandler, OperationID, Context, Req0) ->
+    case {{packageName}}_logic_handler:is_forbidden(
+        LogicHandler,
+        OperationID,
+        Context
+    ) of
+    true ->
+        {true, Req0};
+    false ->
+        {false, Req0}
     end.
 
 get_api_key(header, KeyParam, Req0) ->
-    {Headers, Req} = cowboy_req:headers(Req0),
-    {
-        swagger_utils:get_opt(
-            {{packageName}}_utils:to_header(KeyParam),
-            Headers
-        ),
-        Req
-    };
-
+    Headers = cowboy_req:headers(Req0),
+    case {{packageName}}_utils:get_opt(
+        {{packageName}}_utils:to_header(KeyParam),
+        Headers
+    ) of
+    <<"Bearer ", Token/binary>> ->
+        {Token, Req0};
+    <<"bearer ", Token/binary>> ->
+        {Token, Req0};
+    Other ->
+        {Other, Req0}
+    end;
 get_api_key(qs_val, KeyParam, Req0) ->
-    {QS, Req} = cowboy_req:qs_vals(Req0),
-    { {{packageName}}_utils:get_opt(KeyParam, QS), Req}.
+    QS = cowboy_req:parse_qs(Req0),
+    { {{~packageName~}}_utils:get_opt(KeyParam, QS), Req0}.
 
-
-
+error_header(_Error) ->
+    list_to_binary(io_lib:format("Bearer", [])).
