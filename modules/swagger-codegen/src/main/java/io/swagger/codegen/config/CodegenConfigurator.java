@@ -9,11 +9,12 @@ import io.swagger.codegen.CodegenConfig;
 import io.swagger.codegen.CodegenConfigLoader;
 import io.swagger.codegen.CodegenConstants;
 import io.swagger.codegen.auth.AuthParser;
+import io.swagger.parser.OpenAPIParser;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.parser.OpenAPIV3Parser;
-import io.swagger.v3.parser.OpenAPIV3Parser;
 import io.swagger.v3.core.util.Json;
 import io.swagger.v3.parser.core.models.AuthorizationValue;
+import io.swagger.v3.parser.core.models.SwaggerParseResult;
+import io.swagger.v3.parser.OpenAPIV3Parser;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -429,7 +430,64 @@ public class CodegenConfigurator implements Serializable {
 
         final List<AuthorizationValue> authorizationValues = AuthParser.parse(auth);
 
-        OpenAPI openAPI = new OpenAPIV3Parser().read(inputSpec, authorizationValues, null);
+        SwaggerParseResult result = new OpenAPIParser().readLocation(inputSpec, authorizationValues, null);
+        OpenAPI openAPI = result.getOpenAPI();
+
+        input.opts(new ClientOpts())
+                .openAPI(openAPI);
+
+        return input;
+    }
+
+    public ClientOptInput toClientOptInput(String content) {
+
+        Validate.notEmpty(lang, "language must be specified");
+
+        setVerboseFlags();
+        setSystemProperties();
+
+        CodegenConfig config = CodegenConfigLoader.forName(lang);
+
+        config.setOutputDir(outputDir);
+        config.setSkipOverwrite(skipOverwrite);
+        config.setIgnoreFilePathOverride(ignoreFileOverride);
+        config.setRemoveOperationIdPrefix(removeOperationIdPrefix);
+
+        config.instantiationTypes().putAll(instantiationTypes);
+        config.typeMapping().putAll(typeMappings);
+        config.importMapping().putAll(importMappings);
+        config.languageSpecificPrimitives().addAll(languageSpecificPrimitives);
+        config.reservedWordsMappings().putAll(reservedWordMappings);
+
+        checkAndSetAdditionalProperty(apiPackage, CodegenConstants.API_PACKAGE);
+        checkAndSetAdditionalProperty(modelPackage, CodegenConstants.MODEL_PACKAGE);
+        checkAndSetAdditionalProperty(invokerPackage, CodegenConstants.INVOKER_PACKAGE);
+        checkAndSetAdditionalProperty(groupId, CodegenConstants.GROUP_ID);
+        checkAndSetAdditionalProperty(artifactId, CodegenConstants.ARTIFACT_ID);
+        checkAndSetAdditionalProperty(artifactVersion, CodegenConstants.ARTIFACT_VERSION);
+        checkAndSetAdditionalProperty(templateDir, toAbsolutePathStr(templateDir), CodegenConstants.TEMPLATE_DIR);
+        checkAndSetAdditionalProperty(modelNamePrefix, CodegenConstants.MODEL_NAME_PREFIX);
+        checkAndSetAdditionalProperty(modelNameSuffix, CodegenConstants.MODEL_NAME_SUFFIX);
+        checkAndSetAdditionalProperty(gitUserId, CodegenConstants.GIT_USER_ID);
+        checkAndSetAdditionalProperty(gitRepoId, CodegenConstants.GIT_REPO_ID);
+        checkAndSetAdditionalProperty(releaseNote, CodegenConstants.RELEASE_NOTE);
+        checkAndSetAdditionalProperty(httpUserAgent, CodegenConstants.HTTP_USER_AGENT);
+
+        handleDynamicProperties(config);
+
+        if (isNotEmpty(library)) {
+            config.setLibrary(library);
+        }
+
+        config.additionalProperties().putAll(additionalProperties);
+
+        ClientOptInput input = new ClientOptInput()
+                .config(config);
+
+        final List<AuthorizationValue> authorizationValues = AuthParser.parse(auth);
+
+        SwaggerParseResult result = new OpenAPIParser().readContents(content, authorizationValues, null);
+        OpenAPI openAPI = result.getOpenAPI();
 
         input.opts(new ClientOpts())
                 .openAPI(openAPI);

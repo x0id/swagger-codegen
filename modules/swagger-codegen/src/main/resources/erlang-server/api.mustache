@@ -16,9 +16,9 @@
 {{#apiInfo}}{{#apis}}
 {{#operations}}{{#operation}}
 request_params('{{operationId}}') ->
-    [{{#allParams}}{{^isBodyParam}}
-        '{{baseName}}'{{/isBodyParam}}{{#isBodyParam}}
-        '{{dataType}}'{{/isBodyParam}}{{#hasMore}},{{/hasMore}}{{/allParams}}
+    [{{#allParams}}{{#isNot this 'body-param'}}
+        '{{baseName}}'{{/isNot}}{{#is this 'body-param'}}
+        '{{dataType}}'{{/is}}{{#has this 'more'}},{{/has}}{{/allParams}}
     ];
 {{/operation}}{{/operations}}{{/apis}}{{/apiInfo}}
 request_params(_) ->
@@ -53,7 +53,7 @@ request_params(_) ->
 {{#operations}}{{#operation}}{{#allParams}}
 request_param_info('{{operationId}}', {{^isBodyParam}}'{{baseName}}'{{/isBodyParam}}{{#isBodyParam}}'{{dataType}}'{{/isBodyParam}}) ->
     #{
-        source => {{#isQueryParam}}qs_val{{/isQueryParam}} {{#isPathParam}}binding{{/isPathParam}} {{#isHeaderParam}}header{{/isHeaderParam}}{{#isBodyParam}}body{{/isBodyParam}},
+        source => {{#is this 'query-param'}}qs_val{{/is}} {{#isPathParam}}binding{{/isPathParam}} {{#isHeaderParam}}header{{/isHeaderParam}}{{#isBodyParam}}body{{/isBodyParam}},
         rules => [{{#isString}}
             {type, 'binary'},{{/isString}}{{#isInteger}}
             {type, 'integer'},{{/isInteger}}{{#isLong}}
@@ -65,7 +65,7 @@ request_param_info('{{operationId}}', {{^isBodyParam}}'{{baseName}}'{{/isBodyPar
             {type, 'boolean'},{{/isBoolean}}{{#isDate}}
             {type, 'date'},{{/isDate}}{{#isDateTime}}
             {type, 'datetime'},{{/isDateTime}}{{#isEnum}}
-            {enum, [{{#allowableValues}}{{#values}}'{{.}}'{{^-last}}, {{/-last}}{{/values}}{{/allowableValues}}] },{{/isEnum}}{{#maximum}}
+            {enum, [{{#allowableValues}}{{#values}}'{{.}}'{{^@last}}, {{/@last}}{{/values}}{{/allowableValues}}] },{{/isEnum}}{{#maximum}}
             {max, {{maximum}} }, {{/maximum}}{{#exclusiveMaximum}}
             {exclusive_max, {{exclusiveMaximum}} },{{/exclusiveMaximum}}{{#minimum}}
             {min, {{minimum}} },{{/minimum}}{{#exclusiveMinimum}}
@@ -139,6 +139,9 @@ validate_response_body('list', ReturnBaseType, Body, ValidatorState) ->
     [
         validate(schema, ReturnBaseType, Item, ValidatorState)
     || Item <- Body];
+
+validate_response_body(_, _, {raw, _}, _) ->
+    ok;
 
 validate_response_body(_, ReturnBaseType, Body, ValidatorState) ->
     validate(schema, ReturnBaseType, Body, ValidatorState).
@@ -261,7 +264,7 @@ validate(Rule = {pattern, Pattern}, Name, Value, _ValidatorState) ->
     end;
 
 validate(Rule = schema, Name, Value, ValidatorState) ->
-    Definition =  list_to_binary("#/definitions/" ++ {{packageName}}_utils:to_list(Name)),
+    Definition =  list_to_binary("#/components/schemas/" ++ {{packageName}}_utils:to_list(Name)),
     try
         _ = validate_with_schema(Value, Definition, ValidatorState),
         ok
@@ -297,38 +300,38 @@ validation_error(ViolatedRule, Name, Info) ->
     throw({wrong_param, Name, ViolatedRule, Info}).
 
 -spec get_value(body | qs_val | header | binding, Name :: any(), Req0 :: cowboy_req:req()) ->
-    {Value :: any(), Req :: cowboy_req:req()} | 
+    {Value :: any(), Req :: cowboy_req:req()} |
     {error, Reason :: any(), Req :: cowboy_req:req()}.
 get_value(body, _Name, Req0) ->
-    {ok, Body, Req} = cowboy_req:body(Req0),
+    {ok, Body, Req} = cowboy_req:read_body(Req0),
     case prepare_body(Body) of
         {error, Reason} ->
             {error, Reason, Req};
         Value ->
-            {Value, Req}
+            {Value, Req0}
     end;
 
 get_value(qs_val, Name, Req0) ->
-    {QS, Req} = cowboy_req:qs_vals(Req0),
+    QS = cowboy_req:parse_qs(Req0),
     Value = {{packageName}}_utils:get_opt({{packageName}}_utils:to_qs(Name), QS),
-    {Value, Req};
+    {Value, Req0};
 
 get_value(header, Name, Req0) ->
-    {Headers, Req} = cowboy_req:headers(Req0),
+    Headers = cowboy_req:headers(Req0),
     Value = {{packageName}}_utils:get_opt({{packageName}}_utils:to_header(Name), Headers),
-    {Value, Req};
+    {Value, Req0};
 
 get_value(binding, Name, Req0) ->
-    {Bindings, Req} = cowboy_req:bindings(Req0),
+    Bindings = cowboy_req:bindings(Req0),
     Value = {{packageName}}_utils:get_opt({{packageName}}_utils:to_binding(Name), Bindings),
-    {Value, Req}.
+    {Value, Req0}.
 
 prepare_body(Body) ->
     case Body of
         <<"">> -> <<"">>;
         _ ->
             try
-                jsx:decode(Body, [return_maps]) 
+                jsx:decode(Body, [return_maps])
             catch
               error:_ ->
                 {error, {invalid_body, not_json, Body}}

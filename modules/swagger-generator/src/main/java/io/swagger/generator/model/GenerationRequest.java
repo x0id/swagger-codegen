@@ -7,103 +7,32 @@ import java.util.Objects;
 public class GenerationRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private String specUrl = null;
-    private String language = null;
-    private String library = null;
-    private Map<String, Object> additionalProperties = null;
+    private Object spec = null;
+    private Options options = null;
 
-    public GenerationRequest specUrl(String specUrl) {
-        this.specUrl = specUrl;
+    public GenerationRequest spec(Object spec) {
+        this.spec = spec;
         return this;
     }
 
-    public String getSpecUrl() {
-        return specUrl;
+    public Object getSpec() {
+        return spec;
     }
 
-    public void setSpecUrl(String specUrl) {
-        this.specUrl = specUrl;
+    public void setSpec(Object spec) {
+        this.spec = spec;
     }
 
-    public GenerationRequest language(String language) {
-        this.language = language;
+    public GenerationRequest options(Options options) {
+        this.options = options;
         return this;
     }
 
-    public String getLanguage() {
-        return language;
+    public Options getOptions() {
+        return options;
     }
 
-    public void setLanguage(String language) {
-        this.language = language;
+    public void setOptions(Options options) {
+        this.options = options;
     }
-
-    public GenerationRequest library(String library) {
-        this.library = library;
-        return this;
-    }
-
-    public String getLibrary() {
-        return library;
-    }
-
-    public void setLibrary(String library) {
-        this.library = library;
-    }
-
-    public GenerationRequest additionalProperties(Map<String, Object> additionalProperties) {
-        this.additionalProperties = additionalProperties;
-        return this;
-    }
-
-    public Map<String, Object> getAdditionalProperties() {
-        return additionalProperties;
-    }
-
-    public void setAdditionalProperties(Map<String, Object> additionalProperties) {
-        this.additionalProperties = additionalProperties;
-    }
-
-
-    @Override
-    public boolean equals(java.lang.Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(specUrl, language, library, additionalProperties);
-    }
-
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("class GenerationRequest {\n");
-
-        sb.append("    specUrl: ").append(toIndentedString(specUrl)).append("\n");
-        sb.append("    language: ").append(toIndentedString(language)).append("\n");
-        sb.append("    library: ").append(toIndentedString(library)).append("\n");
-        sb.append("    additionalProperties: ").append(toIndentedString(additionalProperties)).append("\n");
-        sb.append("}");
-        return sb.toString();
-    }
-
-    /**
-     * Convert the given object to string with each line indented by 4 spaces
-     * (except the first line).
-     */
-    private String toIndentedString(java.lang.Object o) {
-        if (o == null) {
-            return "null";
-        }
-        return o.toString().replace("\n", "\n    ");
-    }
-
 }

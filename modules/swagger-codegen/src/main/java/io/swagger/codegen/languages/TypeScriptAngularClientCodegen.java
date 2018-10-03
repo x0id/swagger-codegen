@@ -1,7 +1,6 @@
 package io.swagger.codegen.languages;
 
 import java.io.File;
-import java.lang.StringBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,7 +60,10 @@ public class TypeScriptAngularClientCodegen extends AbstractTypeScriptClientCode
 
     @Override
     protected void addAdditionPropertiesToCodeGenModel(CodegenModel codegenModel, Schema schema) {
-        codegenModel.additionalPropertiesType = getTypeDeclaration(schema.getAdditionalProperties());
+        if (!hasSchemaProperties(schema)) {
+            return;
+        }
+        codegenModel.additionalPropertiesType = getTypeDeclaration((Schema) schema.getAdditionalProperties());
         addImport(codegenModel, codegenModel.additionalPropertiesType);
     }
 
@@ -162,8 +164,8 @@ public class TypeScriptAngularClientCodegen extends AbstractTypeScriptClientCode
             ArraySchema arraySchema = (ArraySchema)propertySchema;
             inner = arraySchema.getItems();
             return this.getSchemaType(propertySchema) + "<" + this.getTypeDeclaration(inner) + ">";
-        } else if(propertySchema instanceof MapSchema) {
-            inner = propertySchema.getAdditionalProperties();
+        } else if(propertySchema instanceof MapSchema && hasSchemaProperties(propertySchema)) {
+            inner = (Schema) propertySchema.getAdditionalProperties();
             return "{ [key: string]: " + this.getTypeDeclaration(inner) + "; }";
         } else if(propertySchema instanceof FileSchema) {
             return "Blob";
@@ -252,11 +254,9 @@ public class TypeScriptAngularClientCodegen extends AbstractTypeScriptClientCode
             }
 
             // Prep a string buffer where we're going to set up our new version of the string.
-            StringBuffer pathBuffer = new StringBuffer();
-
-            // Set up other variables for tracking the current state of the string.
+            StringBuilder pathBuffer = new StringBuilder();
+            StringBuilder parameterName = new StringBuilder();
             int insideCurly = 0;
-            boolean foundUnderscore = false;
 
             // Iterate through existing string, one character at a time.
             for (int i = 0; i < op.path.length(); i++) {
@@ -273,23 +273,13 @@ public class TypeScriptAngularClientCodegen extends AbstractTypeScriptClientCode
                     insideCurly--;
 
                     // Add the more complicated component instead of just the brace.
+                    pathBuffer.append(toVarName(parameterName.toString()));
                     pathBuffer.append("))}");
-                    break;
-                case '_':
-                    // If we're inside the curly brace, the following character will need to be uppercase.
-                    // Otherwise, just add the character.
-                    if (insideCurly > 0) {
-                        foundUnderscore = true;
-                    } else {
-                        pathBuffer.append(op.path.charAt(i));
-                    }
+                    parameterName.setLength(0);
                     break;
                 default:
-                    // If we previously found an underscore, we need an uppercase letter.
-                    // Otherwise, just add the character.
-                    if (foundUnderscore) {
-                        pathBuffer.append(Character.toUpperCase(op.path.charAt(i)));
-                        foundUnderscore = false;
+                    if (insideCurly > 0) {
+                        parameterName.append(op.path.charAt(i));
                     } else {
                         pathBuffer.append(op.path.charAt(i));
                     }
